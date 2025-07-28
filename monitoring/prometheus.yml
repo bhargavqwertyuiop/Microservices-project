@@ -1,0 +1,94 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['api-gateway:3000']
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+
+  # User Service
+  - job_name: 'user-service'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['user-service:8001']
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+
+  # Product Service
+  - job_name: 'product-service'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['product-service:8002']
+    metrics_path: '/actuator/prometheus'
+    scrape_timeout: 5s
+
+  # Order Service
+  - job_name: 'order-service'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['order-service:8003']
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+
+  # Notification Service
+  - job_name: 'notification-service'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['notification-service:8004']
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+
+  # Infrastructure monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql:3306']
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Nginx metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+
+  # Docker metrics
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['docker-exporter:9323']

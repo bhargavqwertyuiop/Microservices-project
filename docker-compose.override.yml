@@ -1,0 +1,45 @@
+# Development override for docker-compose.yml
+# This file is automatically loaded in development
+version: '3.8'
+
+services:
+  api-gateway:
+    volumes:
+      - ./api-gateway:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  user-service:
+    volumes:
+      - ./user-service:/app
+    environment:
+      - DEBUG=true
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+
+  notification-service:
+    volumes:
+      - ./notification-service:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  # Enable debug logging for development
+  postgres:
+    command: postgres -c log_statement=all
+
+  mysql:
+    command: --general-log=1 --general-log-file=/var/lib/mysql/general.log
+
+  # Expose additional ports for development
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"  # Prometheus metrics
+
+  redis:
+    ports:
+      - "6379:6379"
