@@ -1,7 +1,5 @@
 # Development override for docker-compose.yml
 # This file is automatically loaded in development
-version: '3.8'
-
 services:
   api-gateway:
     volumes:
