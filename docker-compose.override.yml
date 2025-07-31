@@ -7,7 +7,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-    command: npm run dev
+    command: npm start
 
   user-service:
     volumes:
@@ -22,7 +22,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-    command: npm run dev
+    command: npm start
 
   # Enable debug logging for development
   postgres:
