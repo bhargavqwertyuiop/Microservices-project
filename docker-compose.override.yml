@@ -1,7 +1,5 @@
 # Development override for docker-compose.yml
 # This file is automatically loaded in development
-version: '3.8'
-
 services:
   api-gateway:
     volumes:
@@ -9,7 +7,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-    command: npm run dev
+    command: npm start
 
   user-service:
     volumes:
@@ -24,7 +22,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-    command: npm run dev
+    command: npm start
 
   # Enable debug logging for development
   postgres:

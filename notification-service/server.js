@@ -16,7 +16,17 @@ const Handlebars = require('handlebars');
 const { htmlToText } = require('html-to-text');
 const Queue = require('bull');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
 require('dotenv').config();
+
+// Ensure logs directory exists
+try {
+  if (!fs.existsSync('logs')) {
+    fs.mkdirSync('logs', { recursive: true });
+  }
+} catch (error) {
+  console.warn('Could not create logs directory:', error.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 8004;
@@ -27,13 +37,21 @@ const redisClient = Redis.createClient({
   url: process.env.REDIS_URL || 'redis://localhost:6379'
 });
 
-redisClient.on('error', (err) => {
-  logger.error('Redis Client Error', err);
-});
-
-redisClient.connect();
-
 // Winston logger configuration
+const transports = [
+  new winston.transports.Console({
+    format: winston.format.simple()
+  })
+];
+
+// Add file transports if logs directory exists
+if (fs.existsSync('logs')) {
+  transports.push(
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  );
+}
+
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -42,17 +60,17 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   defaultMeta: { service: 'notification-service' },
-  transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-    new winston.transports.Console({
-      format: winston.format.simple()
-    })
-  ]
+  transports: transports
 });
 
+redisClient.on('error', (err) => {
+  logger.error('Redis Client Error', err);
+});
+
+redisClient.connect();
+
 // Email transporter setup
-const emailTransporter = nodemailer.createTransporter({
+const emailTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: process.env.SMTP_PORT || 587,
   secure: false,
@@ -169,10 +187,10 @@ const emailTemplates = {
       <p><strong>Order Details:</strong></p>
       <ul>
         {{#each items}}
-        <li>{{name}} - Qty: {{quantity}} - ${{price}}</li>
+        <li>{{name}} - Qty: {{quantity}} - \${{price}}</li>
         {{/each}}
       </ul>
-      <p><strong>Total: ${{totalAmount}}</strong></p>
+      <p><strong>Total: \${{totalAmount}}</strong></p>
       <p>We'll notify you when your order ships.</p>
       <p>Thank you for your business!</p>
     `
