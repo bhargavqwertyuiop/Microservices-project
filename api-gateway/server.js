@@ -9,7 +9,17 @@ const redis = require('redis');
 const winston = require('winston');
 const promClient = require('prom-client');
 const promMiddleware = require('express-prometheus-middleware');
+const fs = require('fs');
 require('dotenv').config();
+
+// Ensure logs directory exists
+try {
+  if (!fs.existsSync('logs')) {
+    fs.mkdirSync('logs', { recursive: true });
+  }
+} catch (error) {
+  console.warn('Could not create logs directory:', error.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +37,20 @@ redisClient.on('error', (err) => {
 redisClient.connect();
 
 // Winston logger configuration
+const transports = [
+  new winston.transports.Console({
+    format: winston.format.simple()
+  })
+];
+
+// Add file transports if logs directory exists
+if (fs.existsSync('logs')) {
+  transports.push(
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  );
+}
+
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -35,24 +59,10 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   defaultMeta: { service: 'api-gateway' },
-  transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-    new winston.transports.Console({
-      format: winston.format.simple()
-    })
-  ]
+  transports: transports
 });
 
-// Prometheus metrics
-const collectDefaultMetrics = promClient.collectDefaultMetrics;
-collectDefaultMetrics();
-
-const httpRequestDuration = new promClient.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Duration of HTTP requests in seconds',
-  labelNames: ['method', 'route', 'status']
-});
+// Prometheus metrics - handled by middleware
 
 // Middleware setup
 app.use(helmet());
@@ -78,11 +88,8 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
-  legacyHeaders: false,
-  store: new (require('rate-limit-redis'))({
-    client: redisClient,
-    prefix: 'rl:'
-  })
+  legacyHeaders: false
+  // Note: Using memory store for now, consider adding rate-limit-redis for production
 });
 
 app.use(limiter);
@@ -101,10 +108,6 @@ app.use((req, res, next) => {
       userAgent: req.get('User-Agent'),
       ip: req.ip
     });
-    
-    httpRequestDuration
-      .labels(req.method, req.route?.path || req.url, res.statusCode)
-      .observe(duration / 1000);
   });
   
   next();
